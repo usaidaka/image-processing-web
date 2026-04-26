@@ -1,0 +1,19 @@
+{
+  "name": "async-image-processing",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "worker",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "docker-compose up --build"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,27 @@
+# Agent & Spec
+openspec/
+.agent/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Local Uploads (Persisted on server, not in Git)
+uploads/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/

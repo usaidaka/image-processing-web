@@ -10,7 +10,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://43.129.52.140:3001';
+  const API_URL = import.meta.env.VITE_API_URL || '';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

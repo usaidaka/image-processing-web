@@ -1,6 +1,7 @@
 # Agent & Spec
 openspec/
 .agent/
+.github/
 
 # Dependencies
 node_modules/

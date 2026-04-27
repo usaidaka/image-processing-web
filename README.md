@@ -64,8 +64,10 @@ Use this option if you want to make changes to the code and see them reflected i
        *(Wait for: "Worker is starting and connecting to Redis...")*
    *   **Terminal 3 (Frontend):** 
        ```bash
-       npm run dev:frontend
+       VITE_API_URL=http://localhost:3001 npm run dev:frontend
        ```
+       > [!IMPORTANT]
+       > You must provide the `VITE_API_URL` environment variable so the frontend knows where to find the backend server.
 
 4. **Verify the Setup**
    *   Open **http://localhost:5173** in your browser.
@@ -88,9 +90,12 @@ Use this option if you want to make changes to the code and see them reflected i
 
 ## 🛠️ Troubleshooting
 
-*   **Redis Connection Failed**: Ensure Redis is running and reachable at the `REDIS_HOST` defined.
-*   **CORS Issues**: If the frontend cannot reach the backend, ensure `VITE_API_URL` is set correctly to `http://localhost:3001`.
-*   **Uploads Folder Missing**: The apps will try to create it, but ensure the parent directory has write permissions.
+*   **Redis Connection Failed**: Ensure Redis is running and reachable at the `REDIS_HOST` defined. The backend and worker will log connection errors until Redis is available.
+*   **"Unexpected end of JSON input"**: This error in the browser usually means the Frontend cannot reach the Backend. Double-check that:
+    1. The Backend is actually running on port 3001.
+    2. You started the Frontend with the correct `VITE_API_URL` environment variable.
+*   **CORS Issues**: If you see CORS errors in the browser console, ensure the Backend has `app.use(cors())` enabled (it is enabled by default in this repo).
+*   **Uploads Folder Missing**: The apps will try to create it automatically, but ensure the project directory has proper write permissions.
 
 ---
 

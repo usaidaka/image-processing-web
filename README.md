@@ -2,8 +2,6 @@
 
 A production-ready, asynchronous image processing web application. Upload images and receive compressed, resized WebP files — all processed in the background without blocking your browser.
 
-**Live Demo:** [image-processing-web-frontend.vercel.app](https://image-processing-web-frontend.vercel.app)
-
 ---
 
 ## 🚀 Local Setup Guide

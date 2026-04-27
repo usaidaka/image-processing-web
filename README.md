@@ -1,9 +1,3 @@
-# ⚡ Async Image Processor
-
-A production-ready, asynchronous image processing web application. Upload images and receive compressed, resized WebP files — all processed in the background without blocking your browser.
-
----
-
 ## 🚀 Local Setup Guide
 
 Follow these instructions to get the project running on your local machine for development.

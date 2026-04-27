@@ -6,229 +6,166 @@ A production-ready, asynchronous image processing web application. Upload images
 
 ---
 
-## Architecture Overview
+## 🚀 Local Setup Guide
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   Vercel (Frontend)                  │
-│              React + Vite + Tailwind CSS             │
-│           https://your-app.vercel.app/api/*          │
-│                          │                           │
-│              Vercel Reverse Proxy (HTTPS)            │
-└──────────────────────────┬──────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────┐
-│               Your Server (Docker Compose)           │
-│                                                      │
-│  ┌────────────┐   ┌──────────┐   ┌───────────────┐  │
-│  │  Backend   │──▶│  Redis   │◀──│    Worker     │  │
-│  │ Express.js │   │ (Queue)  │   │ BullMQ+Sharp  │  │
-│  │  Port 3001 │   └──────────┘   └───────────────┘  │
-│  └────────────┘                                      │
-│         │                   │                        │
-│         └────────/uploads───┘  (shared Docker volume)│
-└─────────────────────────────────────────────────────┘
-```
-
-### Why This Architecture?
-
-**1. Asynchronous Processing with BullMQ**
-Image processing (resize, compress, convert) is CPU-intensive and can take several seconds. Running this synchronously in the API would block the Node.js event loop and timeout HTTP requests. BullMQ decouples the upload from the processing — the API immediately returns a `job_id`, and the Worker processes the image in the background.
-
-**2. Separate Worker Process**
-The Worker runs as an entirely separate Docker container. This means:
-- It can crash and restart without affecting the API server
-- It can be scaled independently (run multiple workers for higher throughput)
-- CPU-heavy `sharp` operations don't block API responses
-
-**3. Shared Volume for File Storage**
-Backend and Worker share a single Docker volume (`/uploads`). The Backend saves the original uploaded file and the Worker reads it, writes the processed WebP, then the Backend serves the download. This avoids the need for an external storage service for a simple setup.
-
-**4. Vercel Proxy to Bypass Mixed Content**
-Since the Frontend runs on HTTPS (Vercel) and the Backend runs on HTTP (your server), browsers block direct HTTP API calls as "Mixed Content". The `vercel.json` rewrite configuration proxies all `/api/*` requests through Vercel's infrastructure, keeping everything HTTPS from the browser's perspective.
-
-**5. Multi-stage Docker Builds**
-The Dockerfiles use multi-stage builds: TypeScript is compiled in a full Node.js build image, then only the compiled `.js` files and production `node_modules` are copied to a slim final image. This reduces the final image size by ~80%, making deployment faster and the server footprint smaller.
-
----
-
-## Project Structure
-
-```
-/
-├── frontend/          # React + Vite app (deployed to Vercel)
-│   ├── src/
-│   │   ├── App.tsx    # Main component with upload/polling logic
-│   │   └── index.css  # Tailwind CSS v4 styles
-│   └── vercel.json    # API proxy config (critical for HTTPS)
-│
-├── backend/           # Express.js API server
-│   └── src/
-│       └── index.ts   # Upload, status, and download endpoints
-│
-├── worker/            # BullMQ background worker
-│   └── src/
-│       └── index.ts   # Sharp image processing logic
-│
-├── shared/
-│   └── types.ts       # Shared TypeScript interfaces
-│
-├── docker-compose.yml # Server orchestration (backend + worker + redis)
-└── uploads/           # Processed image storage (Docker volume)
-```
-
----
-
-## Setup Instructions
+Follow these instructions to get the project running on your local machine for development.
 
 ### Prerequisites
 
 - **Node.js** v20+
-- **Docker** and **Docker Compose** v2+
+- **Redis** (Required for the queue. You can run it via Docker or install it locally).
+- **Docker** and **Docker Compose** (Optional, but recommended for Option 1).
 
-### Local Development
+### 📦 Option 1: Docker Compose (Quickest)
 
-**1. Clone the repository**
+Use this option to spin up everything (Redis, Backend, Worker) in one command.
 
-```bash
-git clone <your-repo-url>
-cd cfactory
-```
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd cfactory
+   ```
 
-**2. Run the backend services**
+2. **Start the services**
+   ```bash
+   docker compose up -d --build
+   ```
 
-```bash
-# Start Redis, Backend, and Worker
-docker compose up -d --build
-```
+3. **Run the frontend**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-**3. Run the frontend**
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The app will be available at **http://localhost:5173**
-
----
-
-### Production Deployment
-
-#### Backend (Your Server)
-
-**1. Copy the project files to your server**
-
-```bash
-rsync -avz -e 'ssh -p 2222' \
-  --exclude 'node_modules' \
-  --exclude '.git' \
-  --exclude 'uploads' \
-  --exclude 'frontend' \
-  . ubuntu@YOUR_SERVER_IP:/opt/usaid/cfactory
-```
-
-**2. Start the containers on the server**
-
-```bash
-ssh -p 2222 ubuntu@YOUR_SERVER_IP
-cd /opt/usaid/cfactory
-mkdir -p uploads
-docker compose up -d --build
-```
-
-**3. Verify containers are running**
-
-```bash
-docker compose ps
-# Should show backend, worker, and redis all "running"
-```
-
-#### Frontend (Vercel)
-
-**1. Connect your GitHub repository to Vercel**
-
-In the Vercel dashboard:
-- Set **Root Directory** to `frontend`
-- Framework Preset: **Vite**
-
-**2. Add environment variable** (optional, only needed if `vercel.json` is not used):
-
-| Variable | Value |
-|---|---|
-| `VITE_API_URL` | *(leave empty — handled by vercel.json proxy)* |
-
-**3. Deploy** — Vercel auto-deploys on every push to `main`.
+The app will be available at **http://localhost:5173**.
 
 ---
 
-## Environment Variables
+### 🛠️ Option 2: Manual Setup (Best for Development)
 
-### Backend Container
+Use this option if you want to make changes to the code and see them reflected immediately without rebuilding containers.
+
+1. **Install Dependencies**
+   Run this from the root directory to install all packages for the root, frontend, backend, and worker:
+   ```bash
+   npm run install:all
+   ```
+
+2. **Start Redis**
+   Ensure Redis is running on `localhost:6379`. If you have Docker, this is the easiest way:
+   ```bash
+   docker run -d -p 6379:6379 redis:7-alpine
+   ```
+
+3. **Start Components**
+   You will need **three separate terminal windows/tabs** open at the root of the project:
+   *   **Terminal 1 (Backend):** 
+       ```bash
+       npm run dev:backend
+       ```
+       *(Wait for: "Backend server running on port 3001")*
+   *   **Terminal 2 (Worker):** 
+       ```bash
+       npm run dev:worker
+       ```
+       *(Wait for: "Worker is starting and connecting to Redis...")*
+   *   **Terminal 3 (Frontend):** 
+       ```bash
+       npm run dev:frontend
+       ```
+
+4. **Verify the Setup**
+   *   Open **http://localhost:5173** in your browser.
+   *   Upload a small JPG or PNG image.
+   *   Check the **Terminal 2 (Worker)** log to see the image processing progress.
+   *   Once complete, click the "Download WebP" button.
+
+---
+
+## ⚙️ Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `REDIS_HOST` | `redis` | Redis hostname (Docker service name) |
+| `REDIS_HOST` | `localhost` | Redis hostname (`redis` in Docker, `localhost` for manual) |
 | `REDIS_PORT` | `6379` | Redis port |
 | `PORT` | `3001` | Express server port |
-
-### Worker Container
-
-| Variable | Default | Description |
-|---|---|---|
-| `REDIS_HOST` | `redis` | Redis hostname (Docker service name) |
-| `REDIS_PORT` | `6379` | Redis port |
-
-### Frontend (Build-time)
-
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_URL` | `""` (empty) | API base URL. Empty string uses Vercel proxy. Set to `http://localhost:3001` for local dev without proxy. |
+| `VITE_API_URL` | `http://localhost:3001` | Frontend API URL pointing to the backend server. |
 
 ---
 
-## API Reference
+## 🛠️ Troubleshooting
+
+*   **Redis Connection Failed**: Ensure Redis is running and reachable at the `REDIS_HOST` defined.
+*   **CORS Issues**: If the frontend cannot reach the backend, ensure `VITE_API_URL` is set correctly to `http://localhost:3001`.
+*   **Uploads Folder Missing**: The apps will try to create it, but ensure the parent directory has write permissions.
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  Browser (Frontend)                 │
+│              React + Vite + Tailwind CSS            │
+│                 http://localhost:5173               │
+└──────────────────────────┬──────────────────────────┘
+                           │
+                           ▼ (API Calls)
+┌─────────────────────────────────────────────────────┐
+│                  Backend (Express.js)               │
+│                    http://localhost:3001            │
+└──────────┬────────────────────────────┬─────────────┘
+           │                            │
+           ▼ (Add Job)                  ▼ (Serve/Save)
+┌───────────────────────┐    ┌────────────────────────┐
+│     Redis (Queue)     │◀───│   Worker (BullMQ)      │
+│       Port 6379       │    │     Image Processing   │
+└───────────────────────┘    └──────────┬─────────────┘
+                                        │
+           ┌────────────────────────────▼─────────────┐
+           │             /uploads directory           │
+           │          (Shared Local Storage)          │
+           └──────────────────────────────────────────┘
+```
+
+### Why This Architecture?
+
+1.  **Asynchronous Processing**: Image processing (resize, compress, convert) is CPU-intensive. By using BullMQ, the API immediately returns a `job_id` while the heavy work happens in the background, keeping the UI responsive.
+2.  **Separate Worker Process**: The Worker runs independently from the API server. This ensures that even if a heavy image processing task fails or consumes high memory, the main API remains available.
+3.  **Shared Storage**: Both Backend and Worker access the same `uploads` directory. The Backend saves the original file, and the Worker reads it to generate the optimized WebP version.
+4.  **Scalability**: This setup allows you to run multiple worker instances if you need to process a large volume of images simultaneously.
+
+---
+
+## 📂 Project Structure
+
+```
+/
+├── frontend/          # React + Vite app
+├── backend/           # Express.js API server
+├── worker/            # BullMQ background worker
+├── shared/            # Shared TypeScript types
+├── docker-compose.yml # Orchestration for Redis, Backend, Worker
+└── uploads/           # Storage for processed images
+```
+
+---
+
+## 📚 API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/upload` | Upload an image (multipart/form-data, field: `image`) |
-| `GET` | `/api/status/:job_id` | Poll job status |
-| `GET` | `/api/download/:job_id` | Download processed WebP file |
-
-**Upload Response:**
-```json
-{ "job_id": "uuid-v4" }
-```
-
-**Status Response:**
-```json
-{
-  "status": "pending" | "processing" | "completed" | "failed",
-  "error": "string (only on failure)"
-}
-```
+| `POST` | `/api/upload` | Upload image (multipart, field: `image`) |
+| `GET` | `/api/status/:id` | Poll job status |
+| `GET` | `/api/download/:id` | Download processed WebP |
 
 ---
 
-## Image Processing Specs
+## 🧪 Tech Stack
 
-- **Max upload size:** 20MB
-- **Accepted formats:** JPG, PNG, WebP
-- **Output format:** WebP
-- **Max output dimensions:** 1280px (maintains aspect ratio)
-- **Output quality:** 80%
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Vite, Tailwind CSS v4 |
-| Backend | Node.js, Express 5, TypeScript |
-| Queue | BullMQ (Redis-backed) |
-| Image Processing | Sharp |
-| Cache/Queue Broker | Redis 7 |
-| Containerization | Docker, Docker Compose |
-| Frontend Hosting | Vercel |
+- **Frontend**: React 19, Vite, Tailwind CSS v4
+- **Backend**: Node.js, Express 5, TypeScript
+- **Queue**: BullMQ (Redis-backed)
+- **Image Processing**: Sharp
+- **Infrastructure**: Docker, Docker Compose, Vercel

@@ -9,7 +9,11 @@
     "shared"
   ],
   "scripts": {
-    "dev": "docker-compose up --build"
+    "dev": "docker-compose up --build",
+    "dev:backend": "cd backend && npx ts-node src/index.ts",
+    "dev:worker": "cd worker && npx ts-node src/index.ts",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../worker && npm install"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

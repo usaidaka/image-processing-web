@@ -90,11 +90,21 @@ Use this option if you want to make changes to the code and see them reflected i
 
 ## 🛠️ Troubleshooting
 
+### 1. `Unexpected end of JSON input` (Frontend Error)
+**Symptom:** You see a red error box on the frontend immediately after uploading an image. In the browser's Network tab, the `/api/upload` request returns a `404 Not Found`.
+**Root Cause:** If `VITE_API_URL` is missing from the frontend's `.env`, Vite attempts to send the API request to its own local port (e.g., `http://localhost:5173/api/upload`). Because the Vite development server doesn't have an API route there, it returns an HTML fallback page (404). When the frontend tries to parse this HTML as JSON (`await response.json()`), it throws the `Unexpected end of JSON input` error.
+**Solution:** Ensure you have an `.env` file in the `frontend` directory containing:
+`VITE_API_URL=http://localhost:3001`
+*(See `.env.example` at the root for a template).*
+
+### 2. `Input file is missing: /app/backend/dist/uploads/...` (Docker Error)
+**Symptom:** You run the app using `docker compose up`, the frontend successfully sends the image to the backend (Status 200), but the UI shows an "Image processing failed" error regarding a missing file path.
+**Root Cause:** This is a path resolution issue when building the containers. In the TypeScript source (`backend/src/index.ts`), the uploads folder is referenced as `path.join(__dirname, '../../uploads')`. When compiled and run inside Docker, the `__dirname` resolves to `/app/backend/dist/backend/src`. Stepping up two directories (`../..`) lands the path at `/app/backend/dist/uploads`, **not** `/app/uploads` (where the shared Docker volume is actually mounted). As a result, the backend saves the image in an isolated folder that the worker container cannot access.
+**Solution:** For active development, use **Option 2 (Manual Setup)** as it avoids Docker pathing complications entirely. If you wish to use Docker, the source code's `UPLOADS_DIR` path needs to be updated to rely on an environment variable or absolute path rather than `__dirname`.
+
+### 3. Other Common Issues
 *   **Redis Connection Failed**: Ensure Redis is running and reachable at the `REDIS_HOST` defined. The backend and worker will log connection errors until Redis is available.
-*   **"Unexpected end of JSON input"**: This error in the browser usually means the Frontend cannot reach the Backend. Double-check that:
-    1. The Backend is actually running on port 3001.
-    2. You started the Frontend with the correct `VITE_API_URL` environment variable.
-*   **CORS Issues**: If you see CORS errors in the browser console, ensure the Backend has `app.use(cors())` enabled (it is enabled by default in this repo).
+*   **CORS Issues**: If you see CORS errors in the browser console, ensure the Backend has `app.use(cors())` enabled.
 *   **Uploads Folder Missing**: The apps will try to create it automatically, but ensure the project directory has proper write permissions.
 
 ---
